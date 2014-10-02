@@ -1,6 +1,7 @@
 var gulp = require('gulp'),
   jshint = require('gulp-jshint'),
-  mocha = require('gulp-mocha');
+  mocha = require('gulp-mocha'),
+  generator = require('./lib');
 
 gulp.task('jshint', function () {
   return gulp.src(['lib/**/*.js', 'templates/**/*.js', 'test/**/*.js'])

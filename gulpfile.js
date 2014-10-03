@@ -14,10 +14,10 @@ gulp.task('mocha', function () {
     .pipe(mocha({reporter:'spec'}));
 });
 
-gulp.task('test', ['jshint','mocha']);
+gulp.task('test', ['jshint', 'mocha']);
 
 gulp.task('watch', function () {
   gulp.watch(['lib/**/*.js', 'templates/**/*.js', 'test/**/*.js'], ['test']);
 });
 
-gulp.task('default', ['test','watch']);
+gulp.task('default', ['test', 'watch']);

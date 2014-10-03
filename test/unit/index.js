@@ -5,10 +5,10 @@ var chai = require('chai'),
 
 chai.use(require('sinon-chai'));
 
-describe('index', function () {
+describe('/index', function () {
   var generator;
   var gulp, yargs, alias, argv;
-  var init, partial;
+  var init, generators;
 
   beforeEach(function () {
     gulp = {
@@ -26,13 +26,28 @@ describe('index', function () {
     };
 
     init = sinon.stub();
-    partial = sinon.stub();
+
+    generators = {
+      partial: sinon.stub(),
+      controller: sinon.stub(),
+      service: sinon.stub(),
+      directive: sinon.stub(),
+      filter: sinon.stub(),
+      model: sinon.stub(),
+      constant: sinon.stub()
+    };
 
     generator = proxyquire(process.cwd() + '/lib/', {
       'gulp': gulp,
       'yargs': yargs,
       './init': init,
-      './partial': partial
+      './generators/partial': generators.partial,
+      './generators/controller': generators.controller,
+      './generators/service': generators.service,
+      './generators/directive': generators.directive,
+      './generators/filter': generators.filter,
+      './generators/model': generators.model,
+      './generators/constant': generators.constant,
     });
 
     sinon.stub(process, 'nextTick').yields();
@@ -43,7 +58,7 @@ describe('index', function () {
 
   it('calls all succesful commands in series', function () {
     init.returns();
-    partial.returns();
+    generators.partial.returns();
 
     argv.init = null;
     argv.partial = 'foo';
@@ -53,7 +68,7 @@ describe('index', function () {
     generator.generate().then(success).catch(fail);
 
     expect(init).calledOnce;
-    expect(partial).calledOnce;
+    expect(generators.partial).calledOnce;
 
     expect(fail, 'fail').not.called;
     expect(success, 'success').calledOnce.calledWith(undefined);
@@ -62,7 +77,7 @@ describe('index', function () {
   it('halts execution of series on fail', function () {
     var err = new Error('b0rked');
     init.throws(err);
-    partial.returns();
+    generators.partial.returns();
 
     argv.init = null;
     argv.partial = 'foo';
@@ -72,7 +87,7 @@ describe('index', function () {
     generator.generate().then(success).catch(fail);
 
     expect(init).calledOnce;
-    expect(partial).not.called;
+    expect(generators.partial).not.called;
 
     expect(fail, 'fail').calledOnce.calledWith(err);
     expect(success, 'success').not.called;

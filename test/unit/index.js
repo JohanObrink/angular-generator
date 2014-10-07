@@ -7,7 +7,7 @@ chai.use(require('sinon-chai'));
 
 describe('/index', function () {
   var generator;
-  var gulp, yargs, alias, argv;
+  var gulp, program;
   var init, generators;
 
   beforeEach(function () {
@@ -15,17 +15,20 @@ describe('/index', function () {
       task: sinon.stub()
     };
 
-    argv = {};
-
-    var alias = sinon.stub();
-    alias.returns({ alias: alias, argv: argv });
-
-    var yargs = {
-      alias: alias,
-      argv: argv
+    program = {
+      version: sinon.stub(),
+      usage: sinon.stub(),
+      option: sinon.stub(),
+      parse: sinon.stub()
     };
+    program.version.returns(program);
+    program.usage.returns(program);
+    program.option.returns(program);
 
-    init = sinon.stub();
+    init = {
+      isInitialized: sinon.stub().returns(true),
+      initialize: sinon.stub()
+    };
 
     generators = {
       partial: sinon.stub(),
@@ -39,7 +42,7 @@ describe('/index', function () {
 
     generator = proxyquire(process.cwd() + '/lib/', {
       'gulp': gulp,
-      'yargs': yargs,
+      'commander': program,
       './init': init,
       './generators/partial': generators.partial,
       './generators/controller': generators.controller,
@@ -57,17 +60,17 @@ describe('/index', function () {
   });
 
   it('calls all succesful commands in series', function () {
-    init.returns();
+    init.initialize.returns();
     generators.partial.returns();
 
-    argv.init = null;
-    argv.partial = 'foo';
+    program.init = null;
+    program.partial = 'foo';
 
     var success = sinon.spy();
     var fail = sinon.spy();
     generator.generate().then(success).catch(fail);
 
-    expect(init).calledOnce;
+    expect(init.initialize).calledOnce;
     expect(generators.partial).calledOnce;
 
     expect(fail, 'fail').not.called;
@@ -76,17 +79,17 @@ describe('/index', function () {
 
   it('halts execution of series on fail', function () {
     var err = new Error('b0rked');
-    init.throws(err);
+    init.initialize.throws(err);
     generators.partial.returns();
 
-    argv.init = null;
-    argv.partial = 'foo';
+    program.init = null;
+    program.partial = 'foo';
 
     var success = sinon.spy();
     var fail = sinon.spy();
     generator.generate().then(success).catch(fail);
 
-    expect(init).calledOnce;
+    expect(init.initialize).calledOnce;
     expect(generators.partial).not.called;
 
     expect(fail, 'fail').calledOnce.calledWith(err);

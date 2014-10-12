@@ -19,6 +19,8 @@
     "after": true,
     "afterEach": true,
     "it": true,
-    "xit": true
+    "xit": true,
+
+    "angular": true
   }
 }

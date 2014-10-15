@@ -8,7 +8,7 @@ chai.use(require('sinon-chai'));
 sinonPromise(sinon);
 
 describe('/scriptHelper', function () {
-  var scriptHelper, fs, init, options;
+  var scriptHelper, fs, init, options, log;
 
   beforeEach(function () {
     options = {
@@ -19,6 +19,11 @@ describe('/scriptHelper', function () {
     init = {
       load: sinon.promise().resolves(options)
     };
+    log = {
+      info: sinon.stub(),
+      warn: sinon.stub(),
+      error: sinon.stub()
+    };
     fs = {
       readFile: sinon.stub(),
       writeFile: sinon.stub()
@@ -26,7 +31,17 @@ describe('/scriptHelper', function () {
     scriptHelper = proxyquire(process.cwd() + '/lib/scriptHelper', {
       'fs': fs,
       'q': sinonPromise.Q,
-      './init': init
+      './init': init,
+      './log': log
+    });
+  });
+
+  describe('#createScriptTag', function () {
+    it('calculates the path and creates a tag', function () {
+      var pagePath = './foo/index.html';
+      var scriptPath = './bar/index.js';
+      var tag = scriptHelper.createScriptTag(pagePath, scriptPath);
+      expect(tag).to.equal('<script src="../bar/index.js"></script>');
     });
   });
 
@@ -90,7 +105,7 @@ describe('/scriptHelper', function () {
 
       expect(fs.writeFile).calledOnce.calledWith(process.cwd() + '/test/unit/index.html', '<html ngApp="generator" />');
     });
-    it('inserts a script tag in .html and saved it', function () {
+    it('inserts a script tag in .html and saves it', function () {
       var tmpl = [
         '<html>',
         '  <body>',
@@ -105,8 +120,8 @@ describe('/scriptHelper', function () {
       var expectedApp = [
         '<html>',
         '  <body>',
-        '  <!-- service -->',
-        '    <script src="service/foo.js"></script>',
+        '    <!-- service -->',
+        '    <script src="src/service/foo.js"></script>',
         '    <!-- /service -->',
         '',
         '    <!-- service test -->',
@@ -118,7 +133,7 @@ describe('/scriptHelper', function () {
         '<html>',
         '  <body>',
         '    <!-- service -->',
-        '    <script src="../../service/foo.js"></script>',
+        '    <script src="../../src/service/foo.js"></script>',
         '    <!-- /service -->',
         '',
         '    <!-- service test -->',
@@ -134,7 +149,25 @@ describe('/scriptHelper', function () {
 
       expect(fs.writeFile).calledTwice;
       expect(fs.writeFile).calledWith(process.cwd() + '/index.html', expectedApp);
-      expect(fs.writeFile).calledWith(process.cwd() + '/test/unit/index.html');
+      expect(fs.writeFile).calledWith(process.cwd() + '/test/unit/index.html', expectedTest);
+    });
+    it('warns if insert point can\'t be found', function () {
+      var tmpl = [
+        '<html>',
+        '  <body>',
+        '  </body>',
+        '</html>'
+      ].join('\n');
+
+      fs.readFile.yields(null, tmpl);
+
+      scriptHelper.insertScript('service', 'foo.js').catch(console.error.bind(console));
+
+      expect(fs.writeFile).calledTwice;
+      expect(fs.writeFile).calledWith(process.cwd() + '/index.html', tmpl);
+      expect(fs.writeFile).calledWith(process.cwd() + '/test/unit/index.html', tmpl);
+
+      expect(log.warn).calledTwice;
     });
   });
 });

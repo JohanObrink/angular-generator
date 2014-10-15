@@ -8,7 +8,7 @@ chai.use(require('sinon-chai'));
 sinonPromise(sinon);
 
 describe('/generators/service', function () {
-  var service, init, options, fileHelper, files, fs;
+  var service, init, options, fileHelper, scriptHelper, files, fs;
 
   beforeEach(function () {
     options = {
@@ -23,19 +23,22 @@ describe('/generators/service', function () {
       {
         name: 'template.js',
         path: '/foo/bar/template.js',
-        template: 'module(\'{{module}}\').service(\'{{name}}\');',
+        template: 'module(\'<%= module %>\').service(\'<%= name %>\');',
         content: 'module(\'angular-generator\').service(\'foo\');'
       },
       {
         name: 'test.js',
         path: '/foo/bar/test.js',
-        template: 'describe(\'{{name}}\');',
+        template: 'describe(\'<%= name %>\');',
         content: 'describe(\'foo\');'
       }
     ];
     fileHelper = {
       getTemplates: sinon.promise().resolves(files),
       saveFile: sinon.promise().resolves()
+    };
+    scriptHelper = {
+      insertScript: sinon.promise().resolves()
     };
     fs = {
       writeFile: sinon.stub()
@@ -45,7 +48,8 @@ describe('/generators/service', function () {
       'fs': fs,
       'q': sinonPromise.Q,
       '../init': init,
-      '../fileHelper': fileHelper
+      '../fileHelper': fileHelper,
+      '../scriptHelper': scriptHelper
     };
 
     service = proxyquire(process.cwd() + '/lib/generators/service', mocks);
@@ -63,5 +67,9 @@ describe('/generators/service', function () {
     expect(fileHelper.saveFile).calledTwice;
     expect(fileHelper.saveFile).calledWith(process.cwd() + '/src/service/foo.js', files[0].content);
     expect(fileHelper.saveFile).calledWith(process.cwd() + '/test/unit/service/foo.js', files[1].content);
+  });
+  it('adds script tags to app and test .html', function () {
+    service('foo');
+    expect(scriptHelper.insertScript).calledOnce.calledWith('service', 'foo.js');
   });
 });

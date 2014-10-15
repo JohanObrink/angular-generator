@@ -28,5 +28,7 @@ node_modules
 .lock-wscript
 
 # Generated files
-dist/
-templates/
+src/
+distdist/
+tmpl/
+testtest/

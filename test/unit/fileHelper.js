@@ -7,23 +7,26 @@ var chai = require('chai'),
 chai.use(require('sinon-chai'));
 sinonPromise(sinon);
 
-describe('/templatesHelper', function () {
-  var templatesHelper, fs, init, options, success, fail;
+describe('/fileHelper', function () {
+  var fileHelper, fs, mkdirp, init, options, success, fail;
 
   beforeEach(function () {
     fs = {
       readdir: sinon.stub(),
       readFile: sinon.stub(),
-      writeFile: sinon.stub()
+      writeFile: sinon.stub(),
+      stat: sinon.stub()
     };
+    mkdirp = sinon.stub();
     options = {
       templatesFolder: 'custom'
     };
     init = {
       load: sinon.promise().resolves(options)
     };
-    templatesHelper = proxyquire(process.cwd() + '/lib/templatesHelper', {
+    fileHelper = proxyquire(process.cwd() + '/lib/fileHelper', {
       'fs': fs,
+      'mkdirp': mkdirp,
       'q': sinonPromise.Q,
       './init': init
     });
@@ -33,23 +36,18 @@ describe('/templatesHelper', function () {
 
   describe('#listTemplates', function () {
     it('first gets the options from init', function () {
-      templatesHelper.listTemplates('service');
-      expect(init.load).calledOnce;
-    });
-    it('caches options from init', function () {
-      templatesHelper.listTemplates('service');
-      templatesHelper.listTemplates('service');
+      fileHelper.listTemplates('service');
       expect(init.load).calledOnce;
     });
     it('starts by listing the the files of the default folder and then the customized', function () {
-      templatesHelper.listTemplates('service');
+      fileHelper.listTemplates('service');
       fs.readdir.firstCall.yield(null, []);
       expect(fs.readdir).calledTwice;
       expect(fs.readdir, 'default').calledWith(process.cwd() + '/templates/service');
       expect(fs.readdir, 'custom').calledWith(process.cwd() + '/custom/service');
     });
     it('filters files prioritizing customized', function () {
-      templatesHelper.listTemplates('service').then(success).catch(fail);
+      fileHelper.listTemplates('service').then(success).catch(fail);
       fs.readdir.firstCall.yield(null, ['foo.js', 'bar.js']);
       fs.readdir.secondCall.yield(null, ['bar.js', 'baz.js']);
       expect(fail).not.called;
@@ -58,7 +56,7 @@ describe('/templatesHelper', function () {
       expect(result).to.have.length(3);
     });
     it('works without customized folder', function () {
-      templatesHelper.listTemplates('service').then(success).catch(fail);
+      fileHelper.listTemplates('service').then(success).catch(fail);
       fs.readdir.firstCall.yield(null, ['foo.js', 'bar.js']);
       fs.readdir.secondCall.yield('ENOENT');
       expect(fail).not.called;
@@ -70,18 +68,18 @@ describe('/templatesHelper', function () {
 
   describe('#getTemplates', function () {
     it('loads all files from listTemplates', function () {
-      templatesHelper.getTemplates('service', {module: 'm', name: 'n'}).then(success).catch(fail);
+      fileHelper.getTemplates('service', {module: 'm', name: 'n'}).then(success).catch(fail);
 
       fs.readdir.firstCall.yield(null, ['foo.js', 'test.js']);
       fs.readdir.secondCall.yield(null, ['bar.js', 'test.js']);
 
       expect(fs.readFile).calledThrice;
-      expect(fs.readFile).calledWith(process.cwd() + '/templates/service/foo.js');
-      expect(fs.readFile).calledWith(process.cwd() + '/custom/service/bar.js');
-      expect(fs.readFile).calledWith(process.cwd() + '/custom/service/test.js');
+      expect(fs.readFile).calledWith(process.cwd() + '/templates/service/foo.js', {encoding:'utf8'});
+      expect(fs.readFile).calledWith(process.cwd() + '/custom/service/bar.js', {encoding:'utf8'});
+      expect(fs.readFile).calledWith(process.cwd() + '/custom/service/test.js', {encoding:'utf8'});
     });
     it('adds file and rendered content to the templates', function () {
-      templatesHelper.getTemplates('service', {module: 'm', name: 'n'}).then(success).catch(fail);
+      fileHelper.getTemplates('service', {module: 'm', name: 'n'}).then(success).catch(fail);
 
       fs.readdir.firstCall.yield(null, ['foo.js', 'test.js']);
       fs.readdir.secondCall.yield(null, ['bar.js', 'test.js']);
@@ -118,11 +116,34 @@ describe('/templatesHelper', function () {
 
   describe('#render', function () {
     it('replaces variables with passed in values', function () {
-      var result = templatesHelper.render('Hello you {{foo}}, I {{verb}} you!', {
+      var result = fileHelper.render('Hello you {{foo}}, I {{verb}} you!', {
         foo: 'herp',
         verb: 'derp'
       });
       expect(result).to.equal('Hello you herp, I derp you!');
+    });
+  });
+
+  describe('#saveFile', function () {
+    it('checks if directory exists', function () {
+      fileHelper.saveFile('/foo/bar/baz/file.js', '');
+      expect(fs.stat).calledOnce.calledWith('/foo/bar/baz');
+    });
+    it('creates the directory if it doesn\'t exist', function () {
+      fs.stat.yields('ENOENT');
+      fileHelper.saveFile('/foo/bar/baz/file.js', '');
+      expect(mkdirp).calledOnce.calledWith('/foo/bar/baz');
+    });
+    it('saves the file to existing dir', function () {
+      fs.stat.yields();
+      fileHelper.saveFile('/foo/bar/baz/file.js', 'content');
+      expect(fs.writeFile).calledOnce.calledWith('/foo/bar/baz/file.js', 'content');
+    });
+    it('saves the file to created dir', function () {
+      fs.stat.yields('ENOENT');
+      mkdirp.yields();
+      fileHelper.saveFile('/foo/bar/baz/file.js', 'content');
+      expect(fs.writeFile).calledOnce.calledWith('/foo/bar/baz/file.js', 'content');
     });
   });
 });

@@ -54,6 +54,7 @@ describe('/init', function () {
       expect(success, 'success').calledOnce.calledWith(options);
 
       expect(fs.readFile).calledOnce;
+      expect(fs.readFile).calledWith(process.cwd() + '/.generatorrc', {encoding:'utf8'});
     });
     it('returns options from memory if already read', function () {
       var options = { foo: 'bar' };

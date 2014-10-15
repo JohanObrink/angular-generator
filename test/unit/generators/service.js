@@ -64,11 +64,4 @@ describe('/generators/service', function () {
     expect(fileHelper.saveFile).calledWith(process.cwd() + '/src/service/foo.js', files[0].content);
     expect(fileHelper.saveFile).calledWith(process.cwd() + '/test/unit/service/foo.js', files[1].content);
   });
-  it('returns true on success', function () {
-    var success = sinon.spy(), fail = sinon.spy();
-    fs.writeFile.yields(null, {});
-    service('foo').then(success).catch(fail);
-    expect(fail).not.called;
-    expect(success).calledOnce.calledWith(true);
-  });
 });

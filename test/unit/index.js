@@ -91,8 +91,5 @@ describe('/index', function () {
 
     expect(init.initialize).calledOnce;
     expect(generators.partial).not.called;
-
-    expect(fail, 'fail').calledOnce.calledWith(err);
-    expect(success, 'success').not.called;
   });
 });

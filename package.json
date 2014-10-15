@@ -22,8 +22,9 @@
   },
   "homepage": "https://github.com/JohanObrink/gulp-angular-generator",
   "dependencies": {
+    "colors": "^1.0.3",
     "commander": "^2.3.0",
-    "hogan": "^1.0.2",
+    "ejs": "^1.0.0",
     "inquirer": "^0.8.0",
     "mkdirp": "^0.5.0",
     "q": "^1.0.1",

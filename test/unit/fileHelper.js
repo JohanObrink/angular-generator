@@ -84,7 +84,7 @@ describe('/fileHelper', function () {
       fs.readdir.firstCall.yield(null, ['foo.js', 'test.js']);
       fs.readdir.secondCall.yield(null, ['bar.js', 'test.js']);
 
-      fs.readFile.firstCall.yield(null, '//{{module}} {{name}}');
+      fs.readFile.firstCall.yield(null, '//<%= module %> <%= name %>');
       fs.readFile.secondCall.yield(null, '//bar');
       fs.readFile.thirdCall.yield(null, '//test');
 
@@ -92,7 +92,7 @@ describe('/fileHelper', function () {
         {
           name: 'foo.js',
           path: process.cwd() + '/templates/service/foo.js',
-          template: '//{{module}} {{name}}',
+          template: '//<%= module %> <%= name %>',
           content: '//m n'
         },
         {
@@ -116,7 +116,7 @@ describe('/fileHelper', function () {
 
   describe('#render', function () {
     it('replaces variables with passed in values', function () {
-      var result = fileHelper.render('Hello you {{foo}}, I {{verb}} you!', {
+      var result = fileHelper.render('Hello you <%= foo %>, I <%= verb %> you!', {
         foo: 'herp',
         verb: 'derp'
       });
@@ -134,8 +134,21 @@ describe('/fileHelper', function () {
       fileHelper.saveFile('/foo/bar/baz/file.js', '');
       expect(mkdirp).calledOnce.calledWith('/foo/bar/baz');
     });
+    it('checks if the file already exists', function () {
+      fs.stat.withArgs('/foo/bar/baz').yields(null, {});
+      fileHelper.saveFile('/foo/bar/baz/file.js', '');
+      expect(fs.stat).calledTwice.calledWith('/foo/bar/baz/file.js');
+    });
+    it('throws if the file already exists', function () {
+      fs.stat.withArgs('/foo/bar/baz').yields(null, {});
+      fs.stat.withArgs('/foo/bar/baz/file.js').yields(null, {});
+      fileHelper.saveFile('/foo/bar/baz/file.js', '').then(success).catch(fail);
+      expect(success).not.called;
+      expect(fail).calledOnce;
+    });
     it('saves the file to existing dir', function () {
-      fs.stat.yields();
+      fs.stat.withArgs('/foo/bar/baz').yields(null, {});
+      fs.stat.withArgs('/foo/bar/baz/file.js').yields('ENOENT');
       fileHelper.saveFile('/foo/bar/baz/file.js', 'content');
       expect(fs.writeFile).calledOnce.calledWith('/foo/bar/baz/file.js', 'content');
     });

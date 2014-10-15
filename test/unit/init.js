@@ -87,6 +87,7 @@ describe('/init', function () {
       var options = {
         module: 'myModule',
         sourceFolder: '/foo',
+        testFolder: '/test',
         templatesFolder: '/bar',
         buildFolder: '/herp',
         cssPrecompiler: '/derp'
@@ -95,7 +96,7 @@ describe('/init', function () {
       expect(inquirer.prompt).calledOnce;
       var questions = inquirer.prompt.firstCall.args[0];
 
-      expect(questions).to.have.length(5);
+      expect(questions).to.have.length(6);
 
       expect(questions[0].type).to.equal('input');
       expect(questions[0].name).to.equal('module');
@@ -106,17 +107,21 @@ describe('/init', function () {
       expect(questions[1].default).to.equal(options.sourceFolder);
 
       expect(questions[2].type).to.equal('input');
-      expect(questions[2].name).to.equal('templatesFolder');
-      expect(questions[2].default).to.equal(options.templatesFolder);
+      expect(questions[2].name).to.equal('testFolder');
+      expect(questions[2].default).to.equal(options.testFolder);
 
       expect(questions[3].type).to.equal('input');
-      expect(questions[3].name).to.equal('buildFolder');
-      expect(questions[3].default).to.equal(options.buildFolder);
+      expect(questions[3].name).to.equal('templatesFolder');
+      expect(questions[3].default).to.equal(options.templatesFolder);
 
-      expect(questions[4].type).to.equal('list');
-      expect(questions[4].name).to.equal('cssPrecompiler');
-      expect(questions[4].choices).to.eql(['less', 'sass', 'stylus', 'plain css']);
-      expect(questions[4].default).to.equal(options.cssPrecompiler);
+      expect(questions[4].type).to.equal('input');
+      expect(questions[4].name).to.equal('buildFolder');
+      expect(questions[4].default).to.equal(options.buildFolder);
+
+      expect(questions[5].type).to.equal('list');
+      expect(questions[5].name).to.equal('cssPrecompiler');
+      expect(questions[5].choices).to.eql(['less', 'sass', 'stylus', 'plain css']);
+      expect(questions[5].default).to.equal(options.cssPrecompiler);
     });
     it('resolver the given answers', function () {
       var success = sinon.spy();

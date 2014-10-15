@@ -8,107 +8,111 @@ chai.use(require('sinon-chai'));
 sinonPromise(sinon);
 
 describe('/templatesHelper', function () {
-  var templatesHelper, fs, success, fail;
+  var templatesHelper, fs, init, options, success, fail;
 
   beforeEach(function () {
     fs = {
-      readFile: sinon.stub()
+      readdir: sinon.stub(),
+      readFile: sinon.stub(),
+      writeFile: sinon.stub()
+    };
+    options = {
+      templatesFolder: 'custom'
+    };
+    init = {
+      load: sinon.promise().resolves(options)
     };
     templatesHelper = proxyquire(process.cwd() + '/lib/templatesHelper', {
       'fs': fs,
-      'q': sinonPromise.Q
+      'q': sinonPromise.Q,
+      './init': init
     });
     success = sinon.spy();
     fail = sinon.spy();
   });
 
-  describe('#getTemplate', function () {
-    it('starts by calling readFile on customized folder', function () {
-      templatesHelper.getTemplate('custom', 'service', 'template.js');
-      expect(fs.readFile).calledOnce.calledWith(process.cwd() + '/custom/service/template.js');
+  describe('#listTemplates', function () {
+    it('first gets the options from init', function () {
+      templatesHelper.listTemplates('service');
+      expect(init.load).calledOnce;
     });
-    it('returns the contents of the file', function () {
-      var success = sinon.spy();
-      var fail = sinon.spy();
-      templatesHelper.getTemplate('custom', 'service', 'template.js').then(success).catch(fail);
-      fs.readFile.firstCall.yield(null, 'content');
-
+    it('caches options from init', function () {
+      templatesHelper.listTemplates('service');
+      templatesHelper.listTemplates('service');
+      expect(init.load).calledOnce;
+    });
+    it('starts by listing the the files of the default folder and then the customized', function () {
+      templatesHelper.listTemplates('service');
+      fs.readdir.firstCall.yield(null, []);
+      expect(fs.readdir).calledTwice;
+      expect(fs.readdir, 'default').calledWith(process.cwd() + '/templates/service');
+      expect(fs.readdir, 'custom').calledWith(process.cwd() + '/custom/service');
+    });
+    it('filters files prioritizing customized', function () {
+      templatesHelper.listTemplates('service').then(success).catch(fail);
+      fs.readdir.firstCall.yield(null, ['foo.js', 'bar.js']);
+      fs.readdir.secondCall.yield(null, ['bar.js', 'baz.js']);
       expect(fail).not.called;
-      expect(success).calledOnce.calledWith('content');
+      expect(success).calledOnce;
+      var result = success.firstCall.args[0];
+      expect(result).to.have.length(3);
     });
-    it('falls back to default', function () {
-      templatesHelper.getTemplate('custom', 'service', 'template.js');
-
-      fs.readFile.yield('Not found');
-
-      expect(fs.readFile).calledTwice.calledWith(process.cwd() + '/templates/service/template.js');
-    });
-    it('returns the contents of the fallback file', function () {
-      templatesHelper.getTemplate('custom', 'service', 'template.js').then(success).catch(fail);
-      fs.readFile.firstCall.yield('Not found');
-      fs.readFile.secondCall.yield(null, 'content');
-
+    it('works without customized folder', function () {
+      templatesHelper.listTemplates('service').then(success).catch(fail);
+      fs.readdir.firstCall.yield(null, ['foo.js', 'bar.js']);
+      fs.readdir.secondCall.yield('ENOENT');
       expect(fail).not.called;
-      expect(success).calledOnce.calledWith('content');
+      expect(success).calledOnce;
+      var result = success.firstCall.args[0];
+      expect(result).to.have.length(2);
     });
   });
 
   describe('#getTemplates', function () {
-    it('gets all files from custom folder', function () {
-      templatesHelper.getTemplates('custom', 'service', ['template.js', 'test.js'])
-        .then(success).catch(fail);
+    it('loads all files from listTemplates', function () {
+      templatesHelper.getTemplates('service', {module: 'm', name: 'n'}).then(success).catch(fail);
 
-      expect(fs.readFile)
-        .calledTwice
-        .calledWith(process.cwd() + '/custom/service/template.js')
-        .calledWith(process.cwd() + '/custom/service/test.js');
+      fs.readdir.firstCall.yield(null, ['foo.js', 'test.js']);
+      fs.readdir.secondCall.yield(null, ['bar.js', 'test.js']);
 
-      fs.readFile.firstCall.yield(null, 'template');
-      fs.readFile.secondCall.yield(null, 'test');
-
-      expect(success).calledOnce.calledWith(['template', 'test']);
+      expect(fs.readFile).calledThrice;
+      expect(fs.readFile).calledWith(process.cwd() + '/templates/service/foo.js');
+      expect(fs.readFile).calledWith(process.cwd() + '/custom/service/bar.js');
+      expect(fs.readFile).calledWith(process.cwd() + '/custom/service/test.js');
     });
-    it('gets all files from default folder', function () {
-      templatesHelper.getTemplates('custom', 'service', ['template.js', 'test.js'])
-        .then(success).catch(fail);
+    it('adds file and rendered content to the templates', function () {
+      templatesHelper.getTemplates('service', {module: 'm', name: 'n'}).then(success).catch(fail);
 
-      expect(fs.readFile)
-        .calledTwice
-        .calledWith(process.cwd() + '/custom/service/template.js')
-        .calledWith(process.cwd() + '/custom/service/test.js');
+      fs.readdir.firstCall.yield(null, ['foo.js', 'test.js']);
+      fs.readdir.secondCall.yield(null, ['bar.js', 'test.js']);
 
-      fs.readFile.firstCall.yield('Not found');
-      fs.readFile.secondCall.yield('Not found');
+      fs.readFile.firstCall.yield(null, '//{{module}} {{name}}');
+      fs.readFile.secondCall.yield(null, '//bar');
+      fs.readFile.thirdCall.yield(null, '//test');
 
-      expect(fs.readFile)
-        .callCount(4)
-        .calledWith(process.cwd() + '/templates/service/template.js')
-        .calledWith(process.cwd() + '/templates/service/test.js');
+      var expected = [
+        {
+          name: 'foo.js',
+          path: process.cwd() + '/templates/service/foo.js',
+          template: '//{{module}} {{name}}',
+          content: '//m n'
+        },
+        {
+          name: 'bar.js',
+          path: process.cwd() + '/custom/service/bar.js',
+          template: '//bar',
+          content: '//bar'
+        },
+        {
+          name: 'test.js',
+          path: process.cwd() + '/custom/service/test.js',
+          template: '//test',
+          content: '//test'
+        }
+      ];
 
-      fs.readFile.getCall(2).yield(null, 'template');
-      fs.readFile.getCall(3).yield(null, 'test');
-
-      expect(success).calledOnce.calledWith(['template', 'test']);
-    });
-    it('gets files from mixed folders', function () {
-      templatesHelper.getTemplates('custom', 'service', ['template.js', 'test.js'])
-        .then(success).catch(fail);
-
-      expect(fs.readFile)
-        .calledTwice
-        .calledWith(process.cwd() + '/custom/service/template.js')
-        .calledWith(process.cwd() + '/custom/service/test.js');
-
-      fs.readFile.firstCall.yield('Not found');
-      fs.readFile.secondCall.yield(null, 'test');
-
-      expect(fs.readFile)
-        .callCount(3)
-        .calledWith(process.cwd() + '/templates/service/template.js');
-
-      fs.readFile.getCall(2).yield(null, 'template');
-
-      expect(success).calledOnce.calledWith(['template', 'test']);
+      expect(fail).not.call;
+      expect(success).calledOnce.calledWith(expected);
     });
   });
 

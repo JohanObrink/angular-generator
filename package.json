@@ -1,6 +1,6 @@
 {
   "name": "gulp-angular-generator",
-  "version": "0.1.0",
+  "version": "0.0.1",
   "description": "An angular generator using only a gulp task",
   "main": "lib/index.js",
   "scripts": {

@@ -10,7 +10,7 @@ describe('/directives/<%= name %>', function () {
       $templateCache = _$templateCache_;
     });
 
-    $templateCache.put('directive/<%= name %>/<%= name %>.html', '<div></div>');
+    $templateCache.put('directives/<%= name %>/<%= name %>.html', '<div></div>');
     element = $compile('<<%= name %>></<%= name %>>')(outerScope);
     outerScope.$digest();
     scope = element.isolateScope();

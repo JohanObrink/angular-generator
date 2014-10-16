@@ -1,8 +1,8 @@
 {
   "module": "angular-generator",
-  "sourceFolder": "src",
-  "testFolder": "testtest",
-  "templatesFolder": "tmpl",
-  "buildFolder": "distdist",
+  "sourceFolder": "generatedSrc",
+  "testFolder": "generatedTest",
+  "templatesFolder": "customTemplates",
+  "buildFolder": "generatedDist",
   "cssPrecompiler": "less"
 }

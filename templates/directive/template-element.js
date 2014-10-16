@@ -7,7 +7,7 @@ angular.module('<%= module %>').directive('<%= name %>', function () {
     scope: {
 
     },
-    templateUrl: 'directive/<%= name %>/<%= name %>.html',
+    templateUrl: 'directives/<%= name %>/<%= name %>.html',
     link: function (scope, element, attrs, fn) {
 
 

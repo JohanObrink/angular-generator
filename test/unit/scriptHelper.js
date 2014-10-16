@@ -82,7 +82,7 @@ describe('/scriptHelper', function () {
         type: 'service'
       }).catch(console.error.bind(console));
       expect(fs.readFile).calledTwice;
-      expect(fs.readFile).calledWith(process.cwd() + '/index.html', {encoding:'utf8'});
+      expect(fs.readFile).calledWith(process.cwd() + '/src/index.html', {encoding:'utf8'});
       expect(fs.readFile).calledWith(process.cwd() + '/test/unit/index.html', {encoding:'utf8'});
     });
     it('loads default app html if it does not exist', function () {
@@ -111,7 +111,7 @@ describe('/scriptHelper', function () {
 
       fs.readFile.thirdCall.yield(null, '<html ngApp="<%= module %>" />');
 
-      expect(fileHelper.saveFile).calledOnce.calledWith(process.cwd() + '/index.html', '<html ngApp="generator" />', true);
+      expect(fileHelper.saveFile).calledOnce.calledWith(process.cwd() + '/src/index.html', '<html ngApp="generator" />', true);
     });
     it('loads default test html if it does not exist', function () {
       scriptHelper.insertScripts({
@@ -157,7 +157,7 @@ describe('/scriptHelper', function () {
         '<html>',
         '  <body>',
         '    <!-- services -->',
-        '    <script src="src/services/foo.js"></script>',
+        '    <script src="services/foo.js"></script>',
         '    <!-- /services -->',
         '',
         '    <!-- service tests -->',
@@ -189,7 +189,7 @@ describe('/scriptHelper', function () {
       }).catch(console.error.bind(console));
 
       expect(fileHelper.saveFile).calledTwice;
-      expect(fileHelper.saveFile).calledWith(process.cwd() + '/index.html', expectedApp, true);
+      expect(fileHelper.saveFile).calledWith(process.cwd() + '/src/index.html', expectedApp, true);
       expect(fileHelper.saveFile).calledWith(process.cwd() + '/test/unit/index.html', expectedTest, true);
     });
     it('warns if insert point can\'t be found', function () {
@@ -210,7 +210,7 @@ describe('/scriptHelper', function () {
       }).catch(console.error.bind(console));
 
       expect(fileHelper.saveFile).calledTwice;
-      expect(fileHelper.saveFile).calledWith(process.cwd() + '/index.html', tmpl, true);
+      expect(fileHelper.saveFile).calledWith(process.cwd() + '/src/index.html', tmpl, true);
       expect(fileHelper.saveFile).calledWith(process.cwd() + '/test/unit/index.html', tmpl, true);
 
       expect(log.warn).calledThrice;

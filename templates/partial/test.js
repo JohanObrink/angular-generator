@@ -1,4 +1,4 @@
-describe('partial/<%= name %>', function () {
+describe('/partials/<%= folder %>/<%= name %>', function () {
 
   var scope, ctrl;
 

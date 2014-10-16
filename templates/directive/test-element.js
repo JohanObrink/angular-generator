@@ -1,4 +1,4 @@
-describe('directive/<%= name %>', function () {
+describe('/directives/<%= name %>', function () {
 
   var $compile, $templateCache, outerScope, scope, element;
 

@@ -1,4 +1,4 @@
-describe('service/<%= name %>', function () {
+describe('/services/<%= name %>', function () {
 
   var <%= name %>;
 

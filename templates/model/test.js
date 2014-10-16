@@ -1,4 +1,4 @@
-describe('model/<%= name %>', function () {
+describe('/models/<%= name %>', function () {
 
   var <%= name %>;
 

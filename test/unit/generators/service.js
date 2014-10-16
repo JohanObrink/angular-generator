@@ -38,7 +38,7 @@ describe('/generators/service', function () {
       saveFile: sinon.promise().resolves()
     };
     scriptHelper = {
-      insertScript: sinon.promise().resolves()
+      insertScripts: sinon.promise().resolves()
     };
     fs = {
       writeFile: sinon.stub()
@@ -65,11 +65,16 @@ describe('/generators/service', function () {
   it('saves the files', function () {
     service('foo');
     expect(fileHelper.saveFile).calledTwice;
-    expect(fileHelper.saveFile).calledWith(process.cwd() + '/src/service/foo.js', files[0].content);
-    expect(fileHelper.saveFile).calledWith(process.cwd() + '/test/unit/service/foo.js', files[1].content);
+    expect(fileHelper.saveFile).calledWith(process.cwd() + '/src/services/foo.js', files[0].content);
+    expect(fileHelper.saveFile).calledWith(process.cwd() + '/test/unit/services/foo.js', files[1].content);
   });
   it('adds script tags to app and test .html', function () {
     service('foo');
-    expect(scriptHelper.insertScript).calledOnce.calledWith('service', 'foo.js');
+    expect(scriptHelper.insertScripts).calledOnce.calledWith({
+      name: 'foo',
+      type: 'service',
+      codePath: 'services',
+      testPath: 'services'
+    });
   });
 });

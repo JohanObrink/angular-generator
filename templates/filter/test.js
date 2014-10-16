@@ -1,4 +1,4 @@
-describe('filter/<%= name %>', function () {
+describe('/filters/<%= name %>', function () {
 
   var filter;
 

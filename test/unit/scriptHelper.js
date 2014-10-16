@@ -8,7 +8,7 @@ chai.use(require('sinon-chai'));
 sinonPromise(sinon);
 
 describe('/scriptHelper', function () {
-  var scriptHelper, fs, init, options, log;
+  var scriptHelper, fs, fileHelper, init, options, log;
 
   beforeEach(function () {
     options = {
@@ -25,14 +25,25 @@ describe('/scriptHelper', function () {
       error: sinon.stub()
     };
     fs = {
-      readFile: sinon.stub(),
-      writeFile: sinon.stub()
+      readFile: sinon.stub()
+    };
+    fileHelper = {
+      saveFile: sinon.promise()
     };
     scriptHelper = proxyquire(process.cwd() + '/lib/scriptHelper', {
       'fs': fs,
       'q': sinonPromise.Q,
       './init': init,
+      './fileHelper': fileHelper,
       './log': log
+    });
+  });
+
+  describe('#getResource', function () {
+    it('creates an empty file if no template src is passed in', function () {
+      fs.readFile.yields('ENOENT');
+      scriptHelper.getResource('/foo/bar/baz.less');
+      expect(fileHelper.saveFile).calledOnce.calledWith('/foo/bar/baz.less', '', true);
     });
   });
 
@@ -48,29 +59,39 @@ describe('/scriptHelper', function () {
   describe('#insertIn', function () {
     it('inserts text above delimiter', function () {
       var tmpl = [
-        '<!-- service -->',
-        '<!-- /service -->'
+        '<!-- services -->',
+        '<!-- /services -->'
       ].join('\n');
-      var script = '<script src="service/foo.js"></script>';
+      var script = '<script src="services/foo.js"></script>';
       var expected = [
-        '<!-- service -->',
-        '<script src="service/foo.js"></script>',
-        '<!-- /service -->'
+        '<!-- services -->',
+        '<script src="services/foo.js"></script>',
+        '<!-- /services -->'
       ].join('\n');
       var result = scriptHelper.insertIn(tmpl, script, 'service');
       expect(result).to.equal(expected);
     });
   });
 
-  describe('#insertScript', function () {
+  describe('#insertScripts', function () {
     it('tries to load app and test .html', function () {
-      scriptHelper.insertScript('service', 'foo.js').catch(console.error.bind(console));
+      scriptHelper.insertScripts({
+        name: 'foo',
+        codePath: 'services',
+        testPath: 'services',
+        type: 'service'
+      }).catch(console.error.bind(console));
       expect(fs.readFile).calledTwice;
       expect(fs.readFile).calledWith(process.cwd() + '/index.html', {encoding:'utf8'});
       expect(fs.readFile).calledWith(process.cwd() + '/test/unit/index.html', {encoding:'utf8'});
     });
     it('loads default app html if it does not exist', function () {
-      scriptHelper.insertScript('service', 'foo.js').catch(console.error.bind(console));
+      scriptHelper.insertScripts({
+        name: 'foo',
+        codePath: 'services',
+        testPath: 'services',
+        type: 'service'
+      }).catch(console.error.bind(console));
 
       fs.readFile.firstCall.yield('ENOENT');
       fs.readFile.secondCall.yield(null, '<html />');
@@ -78,17 +99,27 @@ describe('/scriptHelper', function () {
       expect(fs.readFile).calledThrice.calledWith(process.cwd() + '/templates/app.html');
     });
     it('creates app html if it does not exist', function () {
-      scriptHelper.insertScript('service', 'foo.js').catch(console.error.bind(console));
+      scriptHelper.insertScripts({
+        name: 'foo',
+        codePath: 'services',
+        testPath: 'services',
+        type: 'service'
+      }).catch(console.error.bind(console));
 
       fs.readFile.firstCall.yield('ENOENT');
       fs.readFile.secondCall.yield(null, '<html />');
 
       fs.readFile.thirdCall.yield(null, '<html ngApp="<%= module %>" />');
 
-      expect(fs.writeFile).calledOnce.calledWith(process.cwd() + '/index.html', '<html ngApp="generator" />');
+      expect(fileHelper.saveFile).calledOnce.calledWith(process.cwd() + '/index.html', '<html ngApp="generator" />', true);
     });
     it('loads default test html if it does not exist', function () {
-      scriptHelper.insertScript('service', 'foo.js').catch(console.error.bind(console));
+      scriptHelper.insertScripts({
+        name: 'foo',
+        codePath: 'services',
+        testPath: 'services',
+        type: 'service'
+      }).catch(console.error.bind(console));
 
       fs.readFile.firstCall.yield(null, '<html />');
       fs.readFile.secondCall.yield('ENOENT');
@@ -96,60 +127,70 @@ describe('/scriptHelper', function () {
       expect(fs.readFile).calledThrice.calledWith(process.cwd() + '/templates/test.html');
     });
     it('creates test html if it does not exist', function () {
-      scriptHelper.insertScript('service', 'foo.js').catch(console.error.bind(console));
+      scriptHelper.insertScripts({
+        name: 'foo',
+        codePath: 'services',
+        testPath: 'services',
+        type: 'service'
+      }).catch(console.error.bind(console));
 
       fs.readFile.firstCall.yield(null, '<html />');
       fs.readFile.secondCall.yield('ENOENT');
 
       fs.readFile.thirdCall.yield(null, '<html ngApp="<%= module %>" />');
 
-      expect(fs.writeFile).calledOnce.calledWith(process.cwd() + '/test/unit/index.html', '<html ngApp="generator" />');
+      expect(fileHelper.saveFile).calledOnce.calledWith(process.cwd() + '/test/unit/index.html', '<html ngApp="generator" />', true);
     });
     it('inserts a script tag in .html and saves it', function () {
       var tmpl = [
         '<html>',
         '  <body>',
-        '    <!-- service -->',
-        '    <!-- /service -->',
+        '    <!-- services -->',
+        '    <!-- /services -->',
         '',
-        '    <!-- service test -->',
-        '    <!-- /service test -->',
+        '    <!-- service tests -->',
+        '    <!-- /service tests -->',
         '  </body>',
         '</html>'
       ].join('\n');
       var expectedApp = [
         '<html>',
         '  <body>',
-        '    <!-- service -->',
-        '    <script src="src/service/foo.js"></script>',
-        '    <!-- /service -->',
+        '    <!-- services -->',
+        '    <script src="src/services/foo.js"></script>',
+        '    <!-- /services -->',
         '',
-        '    <!-- service test -->',
-        '    <!-- /service test -->',
+        '    <!-- service tests -->',
+        '    <!-- /service tests -->',
         '  </body>',
         '</html>'
       ].join('\n');
       var expectedTest = [
         '<html>',
         '  <body>',
-        '    <!-- service -->',
-        '    <script src="../../src/service/foo.js"></script>',
-        '    <!-- /service -->',
+        '    <!-- services -->',
+        '    <script src="../../src/services/foo.js"></script>',
+        '    <!-- /services -->',
         '',
-        '    <!-- service test -->',
-        '    <script src="service/foo.js"></script>',
-        '    <!-- /service test -->',
+        '    <!-- service tests -->',
+        '    <script src="services/foo.js"></script>',
+        '    <!-- /service tests -->',
         '  </body>',
         '</html>'
       ].join('\n');
 
       fs.readFile.yields(null, tmpl);
 
-      scriptHelper.insertScript('service', 'foo.js').catch(console.error.bind(console));
+      scriptHelper.insertScripts({
+        name: 'foo',
+        codePath: 'services',
+        testPath: 'services',
+        type: 'service'
+      }).catch(console.error.bind(console));
 
-      expect(fs.writeFile).calledTwice;
-      expect(fs.writeFile).calledWith(process.cwd() + '/index.html', expectedApp);
-      expect(fs.writeFile).calledWith(process.cwd() + '/test/unit/index.html', expectedTest);
+      expect(fileHelper.saveFile).calledTwice;
+      expect(fileHelper.saveFile).calledWith(process.cwd() + '/index.html', expectedApp, true);
+      expect(fileHelper.saveFile).calledWith(process.cwd() + '/test/unit/index.html', expectedTest, true);
     });
     it('warns if insert point can\'t be found', function () {
       var tmpl = [
@@ -161,13 +202,62 @@ describe('/scriptHelper', function () {
 
       fs.readFile.yields(null, tmpl);
 
-      scriptHelper.insertScript('service', 'foo.js').catch(console.error.bind(console));
+      scriptHelper.insertScripts({
+        name: 'foo',
+        codePath: 'services',
+        testPath: 'services',
+        type: 'service'
+      }).catch(console.error.bind(console));
 
-      expect(fs.writeFile).calledTwice;
-      expect(fs.writeFile).calledWith(process.cwd() + '/index.html', tmpl);
-      expect(fs.writeFile).calledWith(process.cwd() + '/test/unit/index.html', tmpl);
+      expect(fileHelper.saveFile).calledTwice;
+      expect(fileHelper.saveFile).calledWith(process.cwd() + '/index.html', tmpl, true);
+      expect(fileHelper.saveFile).calledWith(process.cwd() + '/test/unit/index.html', tmpl, true);
 
-      expect(log.warn).calledTwice;
+      expect(log.warn).calledThrice;
+    });
+  });
+  describe('#insertImport', function () {
+    it('creates style doc if it doesn\'t exist', function () {
+      fs.readFile.yields('ENOENT');
+      scriptHelper.insertImport('src/partials/foo/foo.less').catch(console.error.bind(console));
+      expect(fileHelper.saveFile).calledOnce;
+    });
+    it('inserts import at correct place', function () {
+      options.cssPrecompiler = 'stylus';
+      fs.readFile.yields(null, '@import \'../partials/bar/bar\'\n');
+
+      scriptHelper.insertImport('src/partials/foo/foo').catch(console.error.bind(console));
+
+      expect(fileHelper.saveFile.firstCall.args[1]).to.equal('@import \'../partials/bar/bar\'\n@import \'../partials/foo/foo\'\n');
+    });
+    it('inserts import correctly for less', function () {
+      options.cssPrecompiler = 'less';
+      fs.readFile.yields(null, '');
+      scriptHelper.insertImport('src/partials/foo/foo').catch(console.error.bind(console));
+      expect(fileHelper.saveFile.firstCall.args[0]).to.match(/.less$/);
+      expect(fileHelper.saveFile.firstCall.args[1]).to.equal('@import "../partials/foo/foo";\n');
+    });
+    it('inserts import correctly for sass', function () {
+      options.cssPrecompiler = 'sass';
+      fs.readFile.yields(null, '');
+      scriptHelper.insertImport('src/partials/foo/foo').catch(console.error.bind(console));
+      expect(fileHelper.saveFile.firstCall.args[0]).to.match(/.sass$/);
+      expect(fileHelper.saveFile.firstCall.args[1]).to.equal('@import "../partials/foo/foo";\n');
+    });
+    it('inserts import correctly for stylus', function () {
+      options.cssPrecompiler = 'stylus';
+      fs.readFile.yields(null, '');
+      scriptHelper.insertImport('src/partials/foo/foo').catch(console.error.bind(console));
+      expect(fileHelper.saveFile.firstCall.args[0]).to.match(/.stylus$/);
+      expect(fileHelper.saveFile.firstCall.args[1]).to.equal('@import \'../partials/foo/foo\'\n');
+    });
+    it('does not insert import for css', function () {
+      options.cssPrecompiler = 'css';
+      fs.readFile.yields('ENOENT');
+      scriptHelper.insertImport('src/partials/foo/foo').catch(console.error.bind(console));
+      expect(fileHelper.saveFile).calledOnce;
+      expect(fileHelper.saveFile.firstCall.args[0]).to.match(/.css$/);
+      expect(fileHelper.saveFile.firstCall.args[1]).to.equal('');
     });
   });
 });

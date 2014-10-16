@@ -1,4 +1,4 @@
-describe('controller/<%= name %>', function () {
+describe('/controllers/<%= name %>', function () {
 
   var scope, ctrl;
 
